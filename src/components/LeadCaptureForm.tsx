@@ -26,27 +26,26 @@ export const LeadCaptureForm = () => {
     setValidationErrors(errors);
 
     if (errors.length === 0) {
-      // Save to database
-try {
-  const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
-    body: {
-      name: formData.name,
-      email: formData.email,
-      industry: formData.industry,
-    },
-  });
-
-  if (emailError) {
-    console.error('Error sending confirmation email:', emailError);
-  } else {
-    console.log('Confirmation email sent successfully');
-  }
-} catch (emailError) {
-  console.error('Error calling email function:', emailError);
-}
-
-      // Send confirmation email
       try {
+        // Save to database first
+        const { data: leadData, error: dbError } = await supabase
+          .from('leads')
+          .insert({
+            name: formData.name,
+            email: formData.email,
+            industry: formData.industry,
+          })
+          .select()
+          .single();
+
+        if (dbError) {
+          console.error('Error saving lead to database:', dbError);
+          return; // Don't proceed if database save fails
+        }
+
+        console.log('Lead saved to database successfully:', leadData);
+
+        // Send confirmation email after successful database save
         const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
           body: {
             name: formData.name,
@@ -57,22 +56,26 @@ try {
 
         if (emailError) {
           console.error('Error sending confirmation email:', emailError);
+          // Don't return here - we still want to show success even if email fails
         } else {
           console.log('Confirmation email sent successfully');
         }
-      } catch (emailError) {
-        console.error('Error calling email function:', emailError);
-      }
 
-      const lead = {
-        name: formData.name,
-        email: formData.email,
-        industry: formData.industry,
-        submitted_at: new Date().toISOString(), 
-      };
-      setLeads([...leads, lead]);
-      setSubmitted(true);
-      setFormData({ name: '', email: '', industry: '' });
+        // Update local state
+        const lead = {
+          name: formData.name,
+          email: formData.email,
+          industry: formData.industry,
+          submitted_at: leadData.submitted_at || new Date().toISOString(),
+        };
+        setLeads([...leads, lead]);
+        setSubmitted(true);
+        setFormData({ name: '', email: '', industry: '' });
+
+      } catch (error) {
+        console.error('Error in form submission:', error);
+        // You might want to show an error message to the user here
+      }
     }
   };
 
