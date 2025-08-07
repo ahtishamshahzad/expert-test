@@ -46,22 +46,26 @@ export const LeadCaptureForm = () => {
         console.log('Lead saved to database successfully:', leadData);
 
         // Send confirmation email after successful database save
-        const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
-          body: {
-            name: formData.name,
-            email: formData.email,
-            industry: formData.industry,
-          },
-        });
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
+            body: {
+              name: formData.name,
+              email: formData.email,
+              industry: formData.industry,
+            },
+          });
 
-        if (emailError) {
-          console.error('Error sending confirmation email:', emailError);
-          // Don't return here - we still want to show success even if email fails
-        } else {
-          console.log('Confirmation email sent successfully');
+          if (emailError) {
+            console.error('Error sending confirmation email:', emailError);
+            // Don't return here - we still want to show success even if email fails
+          } else {
+            console.log('Confirmation email sent successfully');
+          }
+        } catch (emailError) {
+          console.error('Error calling email function:', emailError);
         }
 
-        // Update local state
+        // Update local state with database timestamp
         const lead = {
           name: formData.name,
           email: formData.email,
